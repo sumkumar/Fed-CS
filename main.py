@@ -296,8 +296,8 @@ def run_sc_train(config) :
             config.test, p, config.tbs, config.vbs, config.fixval,
             config.supp_prob, config.SNR, config.magdist, **config.distargs))
 
-    comm_rounds = 3
-    num_clients = 2
+    comm_rounds = 25
+    num_clients = 10
     
     client_data = y_.shape[1]//num_clients
     client_val_data = y_val_.shape[1]//num_clients
@@ -314,13 +314,13 @@ def run_sc_train(config) :
     with tf.Session (config=tfconfig) as sess:
         nmse_for_all_rounds = []
         sess.run (tf.global_variables_initializer ())
-        print("Initial")
-        print("Global")
-        print(sess.run(global_model.vars_in_layer[0][2]))
-        print("Client 1")
-        print(sess.run(client_models_dict[0].vars_in_layer[0][2]))
-        print("Client 2")
-        print(sess.run(client_models_dict[1].vars_in_layer[0][2]))
+        # print("Initial")
+        # print("Global")
+        # print(sess.run(global_model.vars_in_layer[0][2]))
+        # print("Client 1")
+        # print(sess.run(client_models_dict[0].vars_in_layer[0][2]))
+        # print("Client 2")
+        # print(sess.run(client_models_dict[1].vars_in_layer[0][2]))
         for rounds in range(comm_rounds):
             client_weight_list = {}
             client_weight_list['B'] = []
@@ -337,16 +337,16 @@ def run_sc_train(config) :
             global_weights = get_weights(global_model, sess)
             for client in range(num_clients):
                 client_model = client_models_dict[client]
-                print("set global to local")
-                print("Global")
-                print(sess.run(global_model.vars_in_layer[0][2]))
-                print("before")
-                print("Client ", client+1)
-                print(sess.run(client_models_dict[client].vars_in_layer[0][2]))
+                # print("set global to local")
+                # print("Global")
+                # print(sess.run(global_model.vars_in_layer[0][2]))
+                # print("before")
+                # print("Client ", client+1)
+                # print(sess.run(client_models_dict[client].vars_in_layer[0][2]))
                 client_model.set_weights(global_weights,sess)
-                print("after")
-                print("Client", client+1)
-                print(sess.run(client_models_dict[client].vars_in_layer[0][2]))
+                # print("after")
+                # print("Client", client+1)
+                # print(sess.run(client_models_dict[client].vars_in_layer[0][2]))
                 print('--------------------------------------------------------------')
                 print(f'Round: {rounds+1:02} | client no: {client+1:02}')
                 stages = client_stages_dict[client]
@@ -367,13 +367,13 @@ def run_sc_train(config) :
             # print("avg weight list shape")
             # print(np.shape(Avg_client_weights))
             # Avg_client_weights_tensor = []
-            print("after Comm round")
-            print("Global")
-            print(sess.run(global_model.vars_in_layer[0][2]))
-            print("Client 1")
-            print(sess.run(client_models_dict[0].vars_in_layer[0][2]))
-            print("Client 2")
-            print(sess.run(client_models_dict[1].vars_in_layer[0][2]))
+            # print("after Comm round")
+            # print("Global")
+            # print(sess.run(global_model.vars_in_layer[0][2]))
+            # print("Client 1")
+            # print(sess.run(client_models_dict[0].vars_in_layer[0][2]))
+            # print("Client 2")
+            # print(sess.run(client_models_dict[1].vars_in_layer[0][2]))
             # for x in Avg_client_weights:
             #     print(np.shape(x))
             #     print(x)
@@ -383,15 +383,30 @@ def run_sc_train(config) :
             new_weights['W'] = tf.convert_to_tensor(np.mean(client_weight_list['W'],axis=0))
             new_weights['theta'] = tf.convert_to_tensor(np.mean(client_weight_list['theta'],axis=0))
             global_model = global_model.set_weights(new_weights,sess)
-            print("after Global set weights")
-            print("global should be")
-            print(np.mean(client_weight_list['theta'],axis=0)[0])
-            print("Global")
-            print(sess.run(global_model.vars_in_layer[0][2]))
-            print("Client 1")
-            print(sess.run(client_models_dict[0].vars_in_layer[0][2]))
-            print("Client 2")
-            print(sess.run(client_models_dict[1].vars_in_layer[0][2]))
+            # print("after Global set weights")
+            # print("global should be")
+            # print(np.mean(client_weight_list['theta'],axis=0)[0])
+            # print("Global")
+            # print(sess.run(global_model.vars_in_layer[0][2]))
+            # print("Client 1")
+            # print(sess.run(client_models_dict[0].vars_in_layer[0][2]))
+            # print("Client 2")
+            # print(sess.run(client_models_dict[1].vars_in_layer[0][2]))
+
+            # save_trainable_variables(sess ,savefn+'round', scope)
+            # save1 = []
+            # save = dict ()
+            # print(tf.trainable_variables())
+            # for v in tf.trainable_variables ():
+            #   print(str(v.name))
+            #   if scope in v.name:
+            #     # save [str (v.name) ] = sess.run (v)
+            #     save1.append(sess.run(v))
+            # print(save1)
+            lnmse = run_sc_test1(config,sess,global_model)
+            np.savez('lnmse'+str(rounds),lnmse)
+            # print(lnmse)
+
 
 
 def run_cs_train (config) :
@@ -799,15 +814,16 @@ def test_inference(y_,B,W,theta):
 
 
 
-def run_sc_test1(config,B,W,theta):
-
+def run_sc_test1(config,sess,model) :
+    """
+    Test model.
+    """
 
     """Load problem."""
     if not os.path.exists (config.probfn):
         raise ValueError ("Problem file not found.")
     else:
         p = problem.load_problem (config.probfn)
-
 
     """Load testing data."""
     xt = np.load (config.xtest)
@@ -818,52 +834,66 @@ def run_sc_test1(config,B,W,theta):
                               config.supp_prob, config.SNR,
                               config.magdist, **config.distargs))
 
-    sess = tf.Session()
-    y = input_.eval(session=sess)
-    label = label_.eval(session=sess) 
-    # print(xt)
-    # print(label)
-    xhs_val_ = test_inference(y,B,W,theta)
-    xhs_ = [xhs_val_[i].eval(session=sess) for i in range(len(xhs_val_))]
+    """Set up model."""
+    # model = setup_model (config , A=p.A)
+    xhs_ = model.inference (input_, None)
 
-    lnmse = []
-    nmse_denom = np.sum (np.square (xt))
-    # test model
-    for xh_ in xhs_ :
-      # xh = sess.run (xh_ , feed_dict={label_:xt})
-
-           # nmse:
-      loss = np.sum (np.square (xh_ - label))
-      nmse_dB = 10.0 * np.log10 (loss / nmse_denom)
-      # print (nmse_dB)
-      lnmse.append (nmse_dB)
-    return lnmse
-    # print(xhs_)
-    # """Create session and initialize the graph."""
+    """Create session and initialize the graph."""
     # tfconfig = tf.ConfigProto (allow_soft_placement=True)
     # tfconfig.gpu_options.allow_growth = True
     # with tf.Session (config=tfconfig) as sess:
-        
-    #   nmse_denom = np.sum (np.square (xt))
-    #   # supp_gt = xt != 0
+        # graph initialization
+        # sess.run (tf.global_variables_initializer ())
+        # # load model
+        # model.load_trainable_variables (sess , config.modelfn+'n')
 
-    #   lnmse  = []
-    #   # lspar  = []
-    #   # lsperr = []
-    #   # lflspo = []
-    #   # lflsne = []
+    nmse_denom = np.sum (np.square (xt))
+    supp_gt = xt != 0
 
-    #   # test model
-    #   for xh_ in xhs_val_ :
-    #     xh = sess.run (xh_ , feed_dict={label_:xt})
+    lnmse  = []
+    lspar  = []
+    lsperr = []
+    lflspo = []
+    lflsne = []
 
-    #     # nmse:
-    #     loss = np.sum (np.square (xh - xt))
-    #     nmse_dB = 10.0 * np.log10 (loss / nmse_denom)
-    #     print (nmse_dB)
-    #     lnmse.append (nmse_dB)
+    # test model
+    for xh_ in xhs_ :
+        xh = sess.run (xh_ , feed_dict={label_:xt})
 
-    # return lnmse
+        # nmse:
+        loss = np.sum (np.square (xh - xt))
+        nmse_dB = 10.0 * np.log10 (loss / nmse_denom)
+        # print (nmse_dB)
+        lnmse.append (nmse_dB)
+
+        supp = xh != 0.0
+        # intermediate sparsity
+        spar = np.sum (supp , axis=0)
+        lspar.append (spar)
+
+        # support error
+        sperr = np.logical_xor(supp, supp_gt)
+        lsperr.append (np.sum (sperr , axis=0))
+
+        # false positive
+        flspo = np.logical_and (supp , np.logical_not (supp_gt))
+        lflspo.append (np.sum (flspo , axis=0))
+
+        # false negative
+        flsne = np.logical_and (supp_gt , np.logical_not (supp))
+        lflsne.append (np.sum (flsne , axis=0))
+
+    res = dict (nmse=np.asarray  (lnmse),
+                spar=np.asarray  (lspar),
+                sperr=np.asarray (lsperr),
+                flspo=np.asarray (lflspo),
+                flsne=np.asarray (lflsne))
+
+    # print(lnmse)
+
+    np.savez (config.resfn , **res)
+    # end of test
+    return lnmse
 
 def run_sc_test (config) :
     """
