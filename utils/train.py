@@ -514,7 +514,7 @@ def do_training (sess, stages,savefn, scope, val_step, maxit, better_wait):
         # state['done'] = done
         # state['log'] = log
 
-        save_trainable_variables(sess ,savefn, scope)#, **state)
+#         save_trainable_variables(sess ,savefn, scope)#, **state)
 
 
 def do_cs_training (sess, stages, prob,
