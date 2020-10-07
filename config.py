@@ -114,7 +114,7 @@ train_arg.add_argument(
     '-lr', '--init_lr', type=float, default=5e-4,
     help="Initial learning rate.")
 train_arg.add_argument(
-    '-tbs', '--tbs', type=int, default=64,
+    '-tbs', '--tbs', type=int, default=640,
     help="Training batch size.")
 train_arg.add_argument(
     '-vbs', '--vbs', type=int, default=1000,
@@ -169,7 +169,7 @@ train_arg.add_argument(
     '-vs', '--val_step', type=int, default=10,
     help="Interval of validation in training.")
 train_arg.add_argument(
-    '-mi', '--maxit', type=int, default=200,
+    '-mi', '--maxit', type=int, default=200000,
     help="Max number iteration of each stage.")
 train_arg.add_argument(
     '-bw', '--better_wait', type=int, default=4000,
