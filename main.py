@@ -281,6 +281,13 @@ def get_weights(model, sess):
     weights['theta'] = theta_layers
     return weights
 
+def get_weight_obj(B_layers, W_layers, theta_layers):
+    weights = {}
+    weights['B'] = B_layers
+    weights['W'] = W_layers
+    weights['theta'] = theta_layers
+    return weights
+
 def run_sc_train(config) :
     """Load problem."""
     if not os.path.exists(config.probfn):
@@ -308,7 +315,7 @@ def run_sc_train(config) :
       client_stages_dict[i] = train.setup_sc_training (
                     client_models_dict[i], y_[:,i*client_data:(i+1)*client_data], x_[:,i*client_data:(i+1)*client_data],
                     y_val_[:,i*client_val_data:(i+1)*client_val_data], x_val_[:,i*client_val_data:(i+1)*client_val_data], None,
-                    config.init_lr, config.decay_rate, config.lr_decay,i)
+                    config.init_lr, config.decay_rate, config.lr_decay,i,False)
     tfconfig = tf.ConfigProto (allow_soft_placement=True)
     tfconfig.gpu_options.allow_growth = True
     with tf.Session (config=tfconfig) as sess:
@@ -322,10 +329,7 @@ def run_sc_train(config) :
         # print("Client 2")
         # print(sess.run(client_models_dict[1].vars_in_layer[0][2]))
         for rounds in range(comm_rounds):
-            client_weight_list = {}
-            client_weight_list['B'] = []
-            client_weight_list['W'] = []
-            client_weight_list['theta'] = []
+            client_weight_list = get_weight_obj([], [], [])
             #B_sum = [0 for i in range(global_model._T)];W_sum = [0 for i in range(global_model._T)];theta_sum = [0 for i in range(global_model._T)]
             # B_sum = []
             # W_sum = []
@@ -334,7 +338,11 @@ def run_sc_train(config) :
             #     B_sum.append([np.zeros(global_model._N,global_model._M)])
             #     W_sum.append([np.zeros((global_model._N,global_model._N))])
             #     theta_sum.append(np.zeros((global_model._T)))
-            global_weights = get_weights(global_model, sess)
+            layers = global_model.vars_in_layer
+            B_layers = [sess.run(layers[i][0]) for i in range(len(layers))]
+            W_layers = [sess.run(layers[i][1]) for i in range(len(layers))]
+            theta_layers = [sess.run(layers[i][2]) for i in range(len(layers))]
+            global_weights = get_weight_obj(B_layers, W_layers, theta_layers)
             for client in range(num_clients):
                 client_model = client_models_dict[client]
                 # print("set global to local")
@@ -356,7 +364,12 @@ def run_sc_train(config) :
                 end = time.time ()
                 elapsed = end - start
                 print ("elapsed time of training = " + str (timedelta (seconds=elapsed)))
-                client_weights = get_weights(client_model, sess)
+                #client_weights = get_weights(client_model, sess)
+                layers = client_model.vars_in_layer
+                B_layers = [sess.run(layers[i][0]) for i in range(len(layers))]
+                W_layers = [sess.run(layers[i][1]) for i in range(len(layers))]
+                theta_layers = [sess.run(layers[i][2]) for i in range(len(layers))]
+                client_weights = get_weight_obj(B_layers, W_layers, theta_layers)
                 #client_weight_list.append([client_weights['B'], client_weights['W'], client_weights['theta']]) 
                 client_weight_list['B'].append(client_weights['B'])    
                 client_weight_list['W'].append(client_weights['W'])
@@ -405,7 +418,8 @@ def run_sc_train(config) :
             # print(save1)
             lnmse = run_sc_test1(config,sess,global_model)
             np.savez('lnmse'+str(rounds),lnmse)
-            # print(lnmse)
+            print("Global model performance")
+            print(lnmse)
 
 
 

@@ -74,3 +74,6 @@ class LISTA_base (object):
         self.state = utils.train.do_training(
                 sess, stages,savefn, scope, val_step, maxit, better_wait)
 
+    def do_training_one_stage(stage):
+        utils.train.do_training_one_stage(sess, stage,savefn, scope, val_step, maxit, better_wait)
+

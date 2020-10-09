@@ -235,3 +235,52 @@ class LISTA (LISTA_base):
       # print(len(theta_))
       # print(theta_[0].shape) 
       return self
+    
+    
+    def set_weights_at_layer(self, weights, layer, sess):
+      with tf.variable_scope (self._scope, reuse=tf.AUTO_REUSE) as vs:
+        # for t in range(self._T):
+        #   B_,W_,theta_ = updated_weights[t]
+        #   self.vars_in_layer[t] = (tf.get_variable(name="B_%d"%(t+1),dtype=tf.float32,initializer=B_),tf.get_variable(name="W_%d"%(t+1),dtype=tf.float32,initializer=W_),tf.get_variable(name="theta_%d"%(t+1),dtype=tf.float32,initializer=theta_))
+          # self.vars_in_layer[t][1] = tf.get_variable(name="W_%d"%(t+1),dtype=tf.float32,initializer=W_)
+          # self.vars_in_layer[t][2] = tf.get_variable(name="theta_%d"%(t+1),dtype=tf.float32,initializer=theta_)
+        # print(sess.run(Avg_weights[2]))
+        """B_ = [tf.get_variable (name=name+'B',dtype=tf.float32,
+                          initializer=Avg_weights[0]),tf.get_variable (name=name+'B',dtype=tf.float32,
+                          initializer=Avg_weights[3])]
+        W_ = [tf.get_variable (name=name+'W_%d'%(1),dtype=tf.float32,
+                          initializer=Avg_weights[1]),tf.get_variable (name=name+'W_%d'%(2),dtype=tf.float32,
+                          initializer=Avg_weights[4])]
+        theta_ = [tf.get_variable (name=name+'theta_%d'%(1),dtype=tf.float32,
+                          initializer=Avg_weights[2]),tf.get_variable (name=name+'theta_%d'%(2),dtype=tf.float32,
+                          initializer=Avg_weights[5])]"""
+        # assign_op = self.vars_in_layer[0][0].assign(Avg_weights[0])
+        # sess.run(assign_op)
+        # assign_op = self.vars_in_layer[1][0].assign(Avg_weights[3])
+        # sess.run(assign_op)
+        # assign_op = self.vars_in_layer[0][1].assign(Avg_weights[1])
+        # sess.run(assign_op)
+        # assign_op = self.vars_in_layer[1][1].assign(Avg_weights[4])
+        # sess.run(assign_op)
+        # assign_op = self.vars_in_layer[0][2].assign(Avg_weights[2])
+        # sess.run(assign_op)
+        # assign_op = self.vars_in_layer[1][2].assign(Avg_weights[5])
+        # sess.run(assign_op)
+
+        
+        assign_op = self.vars_in_layer[layer][0].assign(weights['B'])
+        sess.run(assign_op)
+        assign_op = self.vars_in_layer[layer][1].assign(weights['W'])
+        sess.run(assign_op)
+        assign_op = self.vars_in_layer[layer][2].assign(weights['theta'])
+        sess.run(assign_op)
+        # print(sess.run(theta_))
+        #self.vars_in_layer = list(zip(B_,W_,theta_))  
+        # print(sess.run(self.vars_in_layer[:][2])) 
+      # print(len(B_))
+      # print(B_[0].shape)
+      # print(len(W_))
+      # print(W_[0].shape)
+      # print(len(theta_))
+      # print(theta_[0].shape) 
+      return self
