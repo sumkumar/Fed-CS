@@ -259,6 +259,7 @@ def setup_model(config, name, **kwargs) :
 ############################################################
 
 def run_train(config) :
+    print("task ", config.task_type)
     if config.task_type == "sc":
         run_sc_train(config)
     elif config.task_type == "cs":
@@ -303,8 +304,8 @@ def run_sc_train(config) :
             config.test, p, config.tbs, config.vbs, config.fixval,
             config.supp_prob, config.SNR, config.magdist, **config.distargs))
 
-    comm_rounds = 5
-    num_clients = 3
+    comm_rounds = 10
+    num_clients = 5
     do_3_stage_training = True
     
     client_data = y_.shape[1]//num_clients
@@ -313,60 +314,30 @@ def run_sc_train(config) :
     client_stages_dict = {}
     print(global_model.vars_in_layer)
     for i in range(num_clients):
-      client_models_dict[i] = setup_model(config,A=p.A.copy(), name='client%d'%(i))
-      print(global_model.vars_in_layer == client_models_dict[i].vars_in_layer)
-      client_stages_dict[i] = train.setup_sc_training (
-                    client_models_dict[i], y_[:,i*client_data:(i+1)*client_data], x_[:,i*client_data:(i+1)*client_data],
-                    y_val_[:,i*client_val_data:(i+1)*client_val_data], x_val_[:,i*client_val_data:(i+1)*client_val_data], None,
-                    config.init_lr, config.decay_rate, config.lr_decay,i,do_3_stage_training)
+        client_models_dict[i] = setup_model(config,A=p.A, name='client%d'%(i))
+        print(global_model.vars_in_layer == client_models_dict[i].vars_in_layer)
+        client_stages_dict[i] = train.setup_sc_training (
+            client_models_dict[i], y_[:,i*client_data:(i+1)*client_data], x_[:,i*client_data:(i+1)*client_data],
+            y_val_[:,i*client_val_data:(i+1)*client_val_data], x_val_[:,i*client_val_data:(i+1)*client_val_data], None,
+            config.init_lr, config.decay_rate, config.lr_decay,i,do_3_stage_training)
     tfconfig = tf.ConfigProto (allow_soft_placement=True)
     tfconfig.gpu_options.allow_growth = True
     print("stages ",len(client_stages_dict[0]))
     with tf.Session (config=tfconfig) as sess:
         nmse_for_all_rounds = []
         sess.run (tf.global_variables_initializer ())
-        # print("Initial")
-        # print("Global")
-        # print(sess.run(global_model.vars_in_layer[0][2]))
-        # print("Client 1")
-        # print(sess.run(client_models_dict[0].vars_in_layer[0][2]))
-        # print("Client 2")
-        # print(sess.run(client_models_dict[1].vars_in_layer[0][2]))
         for layer in range(global_model._T):
             print("Layer ", layer+1)
             for rounds in range(comm_rounds):
                 global_layer = global_model.vars_in_layer[layer]
                 global_weights = get_weight_obj(global_layer[0].eval(sess), global_layer[1].eval(sess), global_layer[2].eval(sess))
                 client_weight_list = get_weight_obj([], [], [])
-                #B_sum = [0 for i in range(global_model._T)];W_sum = [0 for i in range(global_model._T)];theta_sum = [0 for i in range(global_model._T)]
-                # B_sum = []
-                # W_sum = []
-                # theta_sum = []
-                # for i in range(global_model._T):
-                #     B_sum.append([np.zeros(global_model._N,global_model._M)])
-                #     W_sum.append([np.zeros((global_model._N,global_model._N))])
-                #     theta_sum.append(np.zeros((global_model._T)))
-                
-                #B_layers = [sess.run(layers[i][0]) for i in range(len(layers))]
-                #W_layers = [sess.run(layers[i][1]) for i in range(len(layers))]
-                #theta_layers = [sess.run(layers[i][2]) for i in range(len(layers))]
-                
                 for client in range(num_clients):
                     client_model = client_models_dict[client]
-                    #print("set global to local")
-                    #print("Global")
-                    #print(sess.run(global_model.vars_in_layer[layer][2]))
-                    #print("before")
-                    #print("Client ", client+1)
-                    #print(sess.run(client_models_dict[client].vars_in_layer[layer][2]))
                     client_model.set_weights_at_layer(global_weights, layer, sess)
-                    #print("after")
-                    #print("Client", client+1)
-                    #print(sess.run(client_models_dict[client].vars_in_layer[layer][2]))
                     print('--------------------------------------------------------------')
                     print(f'Round: {rounds+1:02} | client no: {client+1:02}')
                     stages = client_stages_dict[client]
-                    #sess.run (tf.global_variables_initializer ())
                     start = time.time ()
                     if do_3_stage_training:
                         for stage_number in range(layer*3, layer*3 + 3):
@@ -383,56 +354,13 @@ def run_sc_train(config) :
                     client_weight_list['B'].append(client_weights['B'])    
                     client_weight_list['W'].append(client_weights['W'])
                     client_weight_list['theta'].append(client_weights['theta'])
-                # Avg_client_weights = np.mean(client_weight_list,axis=0)
-                # print("weight list shape")
-                # print(np.shape(client_weight_list))
-                # print("avg weight list shape")
-                # print(np.shape(Avg_client_weights))
-                # Avg_client_weights_tensor = []
-                # print("after Comm round")
-                # print("Global")
-                # print(sess.run(global_model.vars_in_layer[0][2]))
-                # print("Client 1")
-                # print(sess.run(client_models_dict[0].vars_in_layer[0][2]))
-                # print("Client 2")
-                # print(sess.run(client_models_dict[1].vars_in_layer[0][2]))
-                # for x in Avg_client_weights:
-                #     print(np.shape(x))
-                #     print(x)
-                #     Avg_client_weights_tensor.append(tf.convert_to_tensor(x,dtype=tf.float32))
                 new_weights = {}
                 new_weights['B'] = tf.convert_to_tensor(np.mean(client_weight_list['B'],axis=0))
                 new_weights['W'] = tf.convert_to_tensor(np.mean(client_weight_list['W'],axis=0))
                 new_weights['theta'] = tf.convert_to_tensor(np.mean(client_weight_list['theta'],axis=0))
                 global_model.set_weights_at_layer(new_weights,layer, sess)
-                # print("after Global set weights")
-                # print("global should be")
-                # print(np.mean(client_weight_list['theta'],axis=0)[0])
-                # print("Global")
-                # print(sess.run(global_model.vars_in_layer[0][2]))
-                # print("Client 1")
-                # print(sess.run(client_models_dict[0].vars_in_layer[0][2]))
-                # print("Client 2")
-                # print(sess.run(client_models_dict[1].vars_in_layer[0][2]))
-
-                # save_trainable_variables(sess ,savefn+'round', scope)
-                # save1 = []
-                # save = dict ()
-                # print(tf.trainable_variables())
-                # for v in tf.trainable_variables ():
-                #   print(str(v.name))
-                #   if scope in v.name:
-                #     # save [str (v.name) ] = sess.run (v)
-                #     save1.append(sess.run(v))
-                # print(save1)
             global_layer = global_model.vars_in_layer[layer]
             global_weights = get_weight_obj(global_layer[0].eval(sess), global_layer[1].eval(sess), global_layer[2].eval(sess))
-            for client in range(num_clients):
-                client_model = client_models_dict[client]
-                client_model.set_weights_at_layer(global_weights, layer, sess)
-            
-            
-            
 
         lnmse = run_sc_test1(config,sess,global_model)
         np.savez('lnmse_global',lnmse)
@@ -441,27 +369,27 @@ def run_sc_train(config) :
         
         
         
-        
-        new_global_model = setup_model (config, A=p.A.copy(), name='new_global')
-        for layer in range(new_global_model._T):
-            client_weight_list = get_weight_obj([], [], [])
-            for client in range(num_clients):
-                client_model = client_models_dict[client]
-                client_layer = client_model.vars_in_layer[layer]
-                client_weights = get_weight_obj(client_layer[0].eval(sess), client_layer[1].eval(sess), client_layer[2].eval(sess))
-                client_weight_list['B'].append(client_weights['B'])    
-                client_weight_list['W'].append(client_weights['W'])
-                client_weight_list['theta'].append(client_weights['theta'])
-            new_weights = {}
-            new_weights['B'] = tf.convert_to_tensor(np.mean(client_weight_list['B'],axis=0))
-            new_weights['W'] = tf.convert_to_tensor(np.mean(client_weight_list['W'],axis=0))
-            new_weights['theta'] = tf.convert_to_tensor(np.mean(client_weight_list['theta'],axis=0))
-            new_global_model.set_weights_at_layer(new_weights,layer, sess)
-        
-        lnmse2 = run_sc_test1(config,sess,new_global_model)
-        np.savez('lnmse_new_global',lnmse2)
-        print("New Global model performance")
-        print(lnmse2)
+        if do_3_stage_training:
+            new_global_model = setup_model (config, A=p.A, name='new_global')
+            for layer in range(new_global_model._T):
+                client_weight_list = get_weight_obj([], [], [])
+                for client in range(num_clients):
+                    client_model = client_models_dict[client]
+                    client_layer = client_model.vars_in_layer[layer]
+                    client_weights = get_weight_obj(client_layer[0].eval(sess), client_layer[1].eval(sess), client_layer[2].eval(sess))
+                    client_weight_list['B'].append(client_weights['B'])    
+                    client_weight_list['W'].append(client_weights['W'])
+                    client_weight_list['theta'].append(client_weights['theta'])
+                new_weights = {}
+                new_weights['B'] = tf.convert_to_tensor(np.mean(client_weight_list['B'],axis=0))
+                new_weights['W'] = tf.convert_to_tensor(np.mean(client_weight_list['W'],axis=0))
+                new_weights['theta'] = tf.convert_to_tensor(np.mean(client_weight_list['theta'],axis=0))
+                new_global_model.set_weights_at_layer(new_weights,layer, sess)
+            
+            lnmse2 = run_sc_test1(config,sess,new_global_model)
+            np.savez('lnmse_new_global',lnmse2)
+            print("New Global model performance")
+            print(lnmse2)
         
 
 
@@ -1334,8 +1262,18 @@ def run_robust_test(config):
 def main ():
     # parse configuration
     config, _ = get_config()
+    print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
+    print(tf.config.experimental.list_physical_devices('GPU'))
+
     # set visible GPUs
     os.environ['CUDA_VISIBLE_DEVICES'] = config.gpu
+    os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = 'true'
+
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+
+    # Currently, memory growth needs to be the same across GPUs
+    for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
 
     if config.test:
         run_test (config)
