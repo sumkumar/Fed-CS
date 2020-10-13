@@ -305,9 +305,9 @@ def run_sc_train(config) :
             config.supp_prob, config.SNR, config.magdist, **config.distargs))
 
     comm_rounds = 10
-    num_clients = 5
+    num_clients = 10
     do_3_stage_training = True
-    
+    new_Layer_model = setup_model (config, A=p.A, name='layer')
     client_data = y_.shape[1]//num_clients
     client_val_data = y_val_.shape[1]//num_clients
     client_models_dict = {}
@@ -322,6 +322,7 @@ def run_sc_train(config) :
             config.init_lr, config.decay_rate, config.lr_decay,i,do_3_stage_training)
     tfconfig = tf.ConfigProto (allow_soft_placement=True)
     tfconfig.gpu_options.allow_growth = True
+    Layer_wise_lnmse = []
     print("stages ",len(client_stages_dict[0]))
     with tf.Session (config=tfconfig) as sess:
         nmse_for_all_rounds = []
@@ -359,13 +360,35 @@ def run_sc_train(config) :
                 new_weights['W'] = tf.convert_to_tensor(np.mean(client_weight_list['W'],axis=0))
                 new_weights['theta'] = tf.convert_to_tensor(np.mean(client_weight_list['theta'],axis=0))
                 global_model.set_weights_at_layer(new_weights,layer, sess)
-            global_layer = global_model.vars_in_layer[layer]
-            global_weights = get_weight_obj(global_layer[0].eval(sess), global_layer[1].eval(sess), global_layer[2].eval(sess))
+            if do_3_stage_training:
+                for layer_in in range(layer+1):
+                    client_weight_list = get_weight_obj([], [], [])
+                    for client in range(num_clients):
+                        client_model = client_models_dict[client]
+                        client_layer = client_model.vars_in_layer[layer_in]
+                        client_weights = get_weight_obj(client_layer[0].eval(sess), client_layer[1].eval(sess), client_layer[2].eval(sess))
+                        client_weight_list['B'].append(client_weights['B'])    
+                        client_weight_list['W'].append(client_weights['W'])
+                        client_weight_list['theta'].append(client_weights['theta'])
+                    new_weights = {}
+                    new_weights['B'] = tf.convert_to_tensor(np.mean(client_weight_list['B'],axis=0))
+                    new_weights['W'] = tf.convert_to_tensor(np.mean(client_weight_list['W'],axis=0))
+                    new_weights['theta'] = tf.convert_to_tensor(np.mean(client_weight_list['theta'],axis=0))
+                    new_Layer_model.set_weights_at_layer(new_weights,layer_in, sess)
+                lnmse2 = run_sc_test1(config,sess,new_Layer_model)
+                Layer_wise_lnmse.append(lnmse2[layer+1])
+                print("Layer performance")
+                print(lnmse2)
+                print(lnmse2[layer+1])
 
         lnmse = run_sc_test1(config,sess,global_model)
         np.savez('lnmse_global',lnmse)
         print("Global model performance")
         print(lnmse)
+        
+        np.savez('Layer_lnmse',Layer_wise_lnmse)
+        print("Layer wise performance")
+        print(Layer_wise_lnmse)
         
         
         
