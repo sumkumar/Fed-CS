@@ -390,7 +390,6 @@ def run_sc_train(config) :
             np.savez('lnmse_new_global',lnmse2)
             print("New Global model performance")
             print(lnmse2)
-        
 
 
 def run_cs_train (config) :
