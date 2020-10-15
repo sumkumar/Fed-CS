@@ -111,6 +111,9 @@ prob_arg.add_argument(
 """Training arguments."""
 train_arg = parser.add_argument_group('train')
 train_arg.add_argument(
+    '-cl', '--num_cl', type=int, default=1,
+    help="Number of Clients.")
+train_arg.add_argument(
     '-lr', '--init_lr', type=float, default=5e-4,
     help="Initial learning rate.")
 train_arg.add_argument(
