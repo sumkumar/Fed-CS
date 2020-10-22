@@ -111,10 +111,13 @@ prob_arg.add_argument(
 """Training arguments."""
 train_arg = parser.add_argument_group('train')
 train_arg.add_argument(
+    '-cl', '--num_cl', type=int, default=1,
+    help="Number of Clients.")
+train_arg.add_argument(
     '-lr', '--init_lr', type=float, default=5e-4,
     help="Initial learning rate.")
 train_arg.add_argument(
-    '-tbs', '--tbs', type=int, default=70,
+    '-tbs', '--tbs', type=int, default=64,
     help="Training batch size.")
 train_arg.add_argument(
     '-vbs', '--vbs', type=int, default=100,
@@ -169,7 +172,7 @@ train_arg.add_argument(
     '-vs', '--val_step', type=int, default=10,
     help="Interval of validation in training.")
 train_arg.add_argument(
-    '-mi', '--maxit', type=int, default=1000,
+    '-mi', '--maxit', type=int, default=100,
     help="Max number iteration of each stage.")
 train_arg.add_argument(
     '-bw', '--better_wait', type=int, default=4000,
