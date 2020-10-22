@@ -115,20 +115,20 @@ class LISTA (LISTA_base):
             # constant
             self._kA_ = tf.constant (value=self._A, dtype=tf.float32)
 
-            Bs_.append (tf.get_variable (name='B', dtype=tf.float32,
+            Bs_.append (tf.get_variable (name=self._name+'B', dtype=tf.float32,
                                          initializer=B))
             Bs_ = Bs_ * self._T
             if not self._untied: # tied model
-                Ws_.append (tf.get_variable (name='W', dtype=tf.float32,
+                Ws_.append (tf.get_variable (name=self._name+'W', dtype=tf.float32,
                                              initializer=W))
                 Ws_ = Ws_ * self._T
 
             for t in range (self._T):
-                thetas_.append (tf.get_variable (name="theta_%d"%(t+1),
+                thetas_.append (tf.get_variable (name=self._name+"theta_%d"%(t+1),
                                                  dtype=tf.float32,
                                                  initializer=self._theta))
                 if self._untied: # untied model
-                    Ws_.append (tf.get_variable (name="W_%d"%(t+1),
+                    Ws_.append (tf.get_variable (name=self._name+"W_%d"%(t+1),
                                                  dtype=tf.float32,
                                                  initializer=W))
 

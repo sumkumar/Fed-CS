@@ -360,38 +360,6 @@ def run_sc_train(config) :
                 new_weights['W'] = tf.convert_to_tensor(np.mean(client_weight_list['W'],axis=0))
                 new_weights['theta'] = tf.convert_to_tensor(np.mean(client_weight_list['theta'],axis=0))
                 global_model.set_weights_at_layer(new_weights,layer, sess)
-            if do_3_stage_training:
-                for layer_in in range(layer+1):
-                    client_weight_list = get_weight_obj([], [], [])
-                    for client in range(num_clients):
-                        client_model = client_models_dict[client]
-                        client_layer = client_model.vars_in_layer[layer_in]
-                        client_weights = get_weight_obj(client_layer[0].eval(sess), client_layer[1].eval(sess), client_layer[2].eval(sess))
-                        client_weight_list['B'].append(client_weights['B'])    
-                        client_weight_list['W'].append(client_weights['W'])
-                        client_weight_list['theta'].append(client_weights['theta'])
-                    new_weights = {}
-                    new_weights['B'] = tf.convert_to_tensor(np.mean(client_weight_list['B'],axis=0))
-                    new_weights['W'] = tf.convert_to_tensor(np.mean(client_weight_list['W'],axis=0))
-                    new_weights['theta'] = tf.convert_to_tensor(np.mean(client_weight_list['theta'],axis=0))
-                    new_Layer_model.set_weights_at_layer(new_weights,layer_in, sess)
-                lnmse2 = run_sc_test1(config,sess,new_Layer_model)
-                Layer_wise_lnmse.append(lnmse2[layer+1])
-                print("Layer performance")
-                print(lnmse2)
-                print(lnmse2[layer+1])
-
-        lnmse = run_sc_test1(config,sess,global_model)
-        np.savez('lnmse_global',lnmse)
-        print("Global model performance")
-        print(lnmse)
-        
-        np.savez('Layer_lnmse_'+str(num_clients)+"_"+str(config.maxit),Layer_wise_lnmse)
-        print("Layer wise performance")
-        print(Layer_wise_lnmse)
-        
-        
-        
         if do_3_stage_training:
             new_global_model = setup_model (config, A=p.A, name='new_global')
             for layer in range(new_global_model._T):
@@ -410,7 +378,7 @@ def run_sc_train(config) :
                 new_global_model.set_weights_at_layer(new_weights,layer, sess)
             
             lnmse2 = run_sc_test1(config,sess,new_global_model)
-            np.savez('lnmse_new_global',lnmse2)
+            np.savez('lnmse_new_global_'+str(num_clients),lnmse2)
             print("New Global model performance")
             print(lnmse2)
 
