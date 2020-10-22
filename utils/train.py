@@ -160,7 +160,7 @@ def setup_input_robust(A, pmax_sigma, msigma, pnz, bs_A, bs_x):
 
 
 def setup_sc_training (model, y_, x_, y_val_, x_val_, x0_,
-                       init_lr, decay_rate, lr_decay,client):
+                       init_lr, decay_rate, lr_decay,client, do_3layer_stages):
     """TODO: Docstring for setup_training.
 
     :y_: Tensorflow placeholder or tensor.
@@ -217,24 +217,25 @@ def setup_sc_training (model, y_, x_, y_val_, x_val_, x0_,
         training_stages.append ((layer_info, loss_, nmse_,
                                  loss_val_, nmse_val_, op_, var_list))
 
-        for var in var_list:
-            train_vars.append (var)
+        if do_3layer_stages == True:
+            for var in var_list:
+                train_vars.append (var)
 
-        # Train all variables in current and former layers with decayed
-        # learning rate.
-        for lr in lrs:
-            op_ = get_train_op (loss_, train_vars, lr, lr_multiplier,client)
-            training_stages.append ((layer_info + ' lr={}'.format (lr),
-                                     loss_,
-                                     nmse_,
-                                     loss_val_,
-                                     nmse_val_,
-                                     op_,
-                                     tuple (train_vars), ))
+            # Train all variables in current and former layers with decayed
+            # learning rate.
+            for lr in lrs:
+                op_ = get_train_op (loss_, train_vars, lr, lr_multiplier,client)
+                training_stages.append ((layer_info + ' lr={}'.format (lr),
+                                         loss_,
+                                         nmse_,
+                                         loss_val_,
+                                         nmse_val_,
+                                         op_,
+                                         tuple (train_vars), ))
 
-        # decay learning rates for trained variables
-        for var in train_vars:
-            lr_multiplier [var.op.name] *= decay_rate
+            # decay learning rates for trained variables
+            for var in train_vars:
+                lr_multiplier [var.op.name] *= decay_rate
 
     return training_stages
 
@@ -514,7 +515,53 @@ def do_training (sess, stages,savefn, scope, val_step, maxit, better_wait):
         # state['done'] = done
         # state['log'] = log
 
-        save_trainable_variables(sess ,savefn, scope)#, **state)
+#         save_trainable_variables(sess ,savefn, scope)#, **state)
+
+def do_training_one_stage(sess, stage,savefn, scope, val_step, maxit, better_wait):
+    name, loss_, nmse_, loss_val_, nmse_val_, op_, var_list = stage
+    """Skip stage done already."""
+    # if name in done:
+    #     sys.stdout.write('Already did {}. Skipping\n'.format(name))
+    #     continue
+
+    # print stage information
+    var_disc = 'fine tuning ' + ','.join([v.name for v in var_list])
+    print (name + ' ' + var_disc)
+
+    nmse_hist_val = []
+    for i in range (maxit+1):
+
+        _, loss_tr, nmse_tr = sess.run ([op_, loss_, nmse_])
+        db_tr = 10. * np.log10(nmse_tr)
+
+        if i % val_step == 0:
+            nmse_val, loss_val = sess.run ([nmse_val_, loss_val_])
+
+            if np.isnan (nmse_val):
+                raise RuntimeError ('nmse is nan. exiting...')
+
+            nmse_hist_val = np.append (nmse_hist_val, nmse_val)
+            db_best_val = 10. * np.log10 (nmse_hist_val.min())
+            db_val = 10. * np.log10 (nmse_val)
+            sys.stdout.write(
+                    "\r| i={i:<7d} | loss_tr={loss_tr:.6f} | "
+                    "db_tr={db_tr:.6f}dB | loss_val ={loss_val:.6f} | "
+                    "db_val={db_val:.6f}dB | (best={db_best_val:.6f})"\
+                        .format(i=i, loss_tr=loss_tr, db_tr=db_tr,
+                                loss_val=loss_val, db_val=db_val,
+                                db_best_val=db_best_val))
+            sys.stdout.flush()
+            if i % (10 * val_step) == 0:
+                age_of_best = (len(nmse_hist_val) -
+                               nmse_hist_val.argmin() - 1)
+                # If nmse has not improved for a long time, jump to the
+                # next training stage.
+                if age_of_best * val_step > better_wait:
+                    print('')
+                    break
+            if i % (100 * val_step) == 0:
+                print('')
+
 
 
 def do_cs_training (sess, stages, prob,
