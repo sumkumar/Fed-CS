@@ -67,14 +67,14 @@ Section 4:
                     
         Training on real data:
         
-            !python3 main.py --task_type cs -g 0 --train_file ./results/train50.tfrecords --val_file ./results/val50.tfrecords \
+            !python3 main.py --task_type cs -g 0 --train_file training_tfrecords_filename --val_file validation_tfrecords_filename \
                     --M 128 --N 512 --pnz 0.1 --SNR inf --con_num 0 --column_normalized True \
                     --net LISTA_cs -T 3 --sensing ./experiments/m128_n256_k0.0_p0.1_sinf/prob.npz \
                     --dict ./data/dictionary.npz --scope LISTA_cs --exp_id 0 --num_cl 2 --maxit 50
                     
         Testing on real data:
         
-            !python3 main.py --task_type cs -g 0 -t --train_file ./results/train50.tfrecords --val_file ./results/val50.tfrecords \
+            !python3 main.py --task_type cs -g 0 -t --train_file training_tfrecords_filename --val_file validation_tfrecords_filename \
                     --M 128 --N 512 --pnz 0.1 --SNR inf --con_num 0 --column_normalized True \
                     --net LISTA_cs -T 3 --sensing ./experiments/m128_n256_k0.0_p0.1_sinf/prob.npz \
                     --dict ./data/dictionary.npz --scope LISTA_cs --exp_id 0 --num_cl 2 --maxit 50
