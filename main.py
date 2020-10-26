@@ -312,7 +312,6 @@ def run_sc_train(config) :
         train.setup_input_sc (
             config.test, p, config.tbs, config.vbs, config.fixval,
             config.supp_prob, config.SNR, config.magdist, **config.distargs))
-        
     """Set up model."""
     global_model = setup_model (config, A=p.A, name='global')
     comm_rounds = 10
@@ -323,17 +322,13 @@ def run_sc_train(config) :
     client_val_data = y_val_.shape[1]//num_clients
     client_models_dict = {}
     client_stages_dict = {}
-    print(global_model.vars_in_layer)
     for i in range(num_clients):
         client_models_dict[i] = setup_model(config,A=p.A, name='client%d'%(i))
-        print(global_model.vars_in_layer == client_models_dict[i].vars_in_layer)
         client_stages_dict[i] = train.setup_sc_training (
             client_models_dict[i], y_[:,i*client_data:(i+1)*client_data], x_[:,i*client_data:(i+1)*client_data],
             y_val_[:,i*client_val_data:(i+1)*client_val_data], x_val_[:,i*client_val_data:(i+1)*client_val_data], None,
             config.init_lr, config.decay_rate, config.lr_decay,i,do_3_stage_training)
-    
     Layer_wise_lnmse = []
-    print("stages ",len(client_stages_dict[0]))
     with tf.Session (config=tfconfig) as sess:
         nmse_for_all_rounds = []
         sess.run (tf.global_variables_initializer ())
@@ -384,13 +379,6 @@ def run_sc_train(config) :
                     new_Layer_model.set_weights_at_layer(new_weights,layer_in, sess)
                 lnmse2 = run_sc_test1(config,sess,new_Layer_model)
                 Layer_wise_lnmse.append(lnmse2[layer+1])
-                print("Layer performance")
-                print(lnmse2)
-                print(lnmse2[layer+1])
-        lnmse = run_sc_test1(config,sess,global_model)
-        np.savez('lnmse_global',lnmse)
-        print("Global model performance")
-        print(lnmse)
         np.savez('Layer_lnmse_'+str(num_clients)+"_"+str(config.maxit),Layer_wise_lnmse)
         print("Layer wise performance")
         print(Layer_wise_lnmse)
@@ -433,10 +421,8 @@ def run_cs_train (config) :
     client_val_data = y_val_.shape[1]//num_clients
     client_models_dict = {}
     client_stages_dict = {}
-    print(global_model.vars_in_layer)
     for i in range(num_clients):
         client_models_dict[i] = setup_model(config, Phi=Phi, D=D, name='client%d'%(i))
-        print(global_model.vars_in_layer == client_models_dict[i].vars_in_layer)
         client_stages_dict[i] = train.setup_cs_training (
             client_models_dict[i], y_[:,i*client_data:(i+1)*client_data], f_[:,i*client_data:(i+1)*client_data],
             y_val_[:,i*client_val_data:(i+1)*client_val_data], f_val_[:,i*client_val_data:(i+1)*client_val_data], None,
@@ -511,7 +497,6 @@ def run_cs_train (config) :
                       client_weight_list['W'].append(client_weights['W'])
                       client_weight_list['theta'].append(client_weights['theta'])
                       client_weight_list['D'].append(client_weights['D'])
-                      
                     else:
                       client_weights = get_weight_obj(client_layer[0].eval(sess), client_layer[1].eval(sess), client_layer[2].eval(sess),None,0,global_model._T-1)
                       client_weight_list['B'].append(client_weights['B'])    
