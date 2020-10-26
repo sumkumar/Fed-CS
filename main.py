@@ -276,10 +276,18 @@ def get_weights(model, sess):
     B_layers = [layers[i][0].eval(session=sess) for i in range(len(layers))]
     W_layers = [layers[i][1].eval(session=sess) for i in range(len(layers))]
     theta_layers = [layers[i][2].eval(session=sess) for i in range(len(layers))]
+    B_layers = [layers[i][0].eval(session=sess) for i in range(len(layers)-1)]
+    W_layers = [layers[i][1].eval(session=sess) for i in range(len(layers)-1)]
+    theta_layers = [layers[i][2].eval(session=sess) for i in range(len(layers)-1)]
+    B_layers.append(layers[len(layers)-1][0].eval(session=sess))
+    W_layers.append(layers[len(layers)-1][1].eval(session=sess))
+    theta_layers.append(layers[len(layers)-1][2].eval(session=sess))
+    D = [layers[len(layers)-1][3].eval(session=sess)]
     weights = {}
     weights['B'] = B_layers
     weights['W'] = W_layers
     weights['theta'] = theta_layers
+    weights['D'] = D
     return weights
 
 def get_weight_obj(B_layers, W_layers, theta_layers):
@@ -287,6 +295,8 @@ def get_weight_obj(B_layers, W_layers, theta_layers):
     weights['B'] = B_layers
     weights['W'] = W_layers
     weights['theta'] = theta_layers
+    if layer == k:
+      weights['D'] = D
     return weights
 
 def run_sc_train(config) :
@@ -436,32 +446,119 @@ def run_cs_train (config) :
                                                   config.val_file,
                                                   config.tbs, config.vbs)
 
-    """Set up training."""
-    stages = train.setup_cs_training (
-        model, y_, f_, y_val_, f_val_, None, config.init_lr, config.decay_rate,
-        config.lr_decay, config.lasso_lam)
-
-
-    """Start training."""
+    comm_rounds = 10
+    num_clients = config.num_cl
+    do_3_stage_training = True
+    new_Layer_model = setup_model (config, Phi=Phi, D=D, name='layer')
+    client_data = y_.shape[1]//num_clients
+    client_val_data = y_val_.shape[1]//num_clients
+    client_models_dict = {}
+    client_stages_dict = {}
+    print(global_model.vars_in_layer)
+    for i in range(num_clients):
+        client_models_dict[i] = setup_model(config, Phi=Phi, D=D, name='client%d'%(i))
+        print(global_model.vars_in_layer == client_models_dict[i].vars_in_layer)
+        client_stages_dict[i] = train.setup_cs_training (
+            client_models_dict[i], y_[:,i*client_data:(i+1)*client_data], f_[:,i*client_data:(i+1)*client_data],
+            y_val_[:,i*client_val_data:(i+1)*client_val_data], f_val_[:,i*client_val_data:(i+1)*client_val_data], None,
+            config.init_lr, config.decay_rate, config.lr_decay,config.lasso_lam,i,do_3_stage_training)
     tfconfig = tf.ConfigProto (allow_soft_placement=True)
     tfconfig.gpu_options.allow_growth = True
+    Layer_wise_lnmse = []
+    print("stages ",len(client_stages_dict[0]))
+    new_global_model = setup_model (config, Phi=Phi, D=D, name='new_global')
     with tf.Session (config=tfconfig) as sess:
-        # graph initialization
+        nmse_for_all_rounds = []
         sess.run (tf.global_variables_initializer ())
+        for layer in range(global_model._T):
+            print("Layer ", layer+1)
+            for rounds in range(comm_rounds):
+                global_layer = global_model.vars_in_layer[layer]
+                if layer == global_model._T-1:
+                  global_weights = get_weight_obj(global_layer[0].eval(sess), global_layer[1].eval(sess), global_layer[2].eval(sess),global_layer[3].eval(sess),layer,global_model._T-1)
+                  client_weight_list = get_weight_obj([], [], [],[],layer,global_model._T-1)
+                else:
+                  global_weights = get_weight_obj(global_layer[0].eval(sess), global_layer[1].eval(sess), global_layer[2].eval(sess),None,0,global_model._T-1)
+                  client_weight_list = get_weight_obj([], [], [],None,0,global_model._T-1)
+                for client in range(num_clients):
+                    client_model = client_models_dict[client]
+                    client_model.set_weights_at_layer(global_weights, layer, sess)
+                    print('--------------------------------------------------------------')
+                    print(f'Round: {rounds+1:02} | client no: {client+1:02}')
+                    stages = client_stages_dict[client]
+                    start = time.time ()
+                    if do_3_stage_training:
+                      if layer == global_model._T-1:
+                        for stage_number in range(layer*3, layer*3 + 3):
+                            client_model.do_training_one_stage(sess, stages[stage_number],config.modelfn, config.scope,config.val_step, config.maxit, config.better_wait)    
+                      else:
+                        for stage_number in range(layer*3, layer*3 + 3):
+                            client_model.do_training_one_stage(sess, stages[stage_number],config.modelfn, config.scope,config.val_step, config.maxit, config.better_wait)
+                    else:
+                        client_model.do_training_one_stage(sess, stages[layer],config.modelfn, config.scope,config.val_step, config.maxit, config.better_wait)
+                    end = time.time ()
+                    elapsed = end - start
+                    print ("elapsed time of training = " + str (timedelta (seconds=elapsed)))
+                    #client_weights = get_weights(client_model, sess)
+                    layers = client_model.vars_in_layer[layer]
+                    if layer == global_model._T-1:
+                      client_weights = get_weight_obj(layers[0].eval(sess), layers[1].eval(sess), layers[2].eval(sess),layers[3].eval(sess),layer,global_model._T-1)
+                      #client_weight_list.append([client_weights['B'], client_weights['W'], client_weights['theta']]) 
+                      client_weight_list['B'].append(client_weights['B'])    
+                      client_weight_list['W'].append(client_weights['W'])
+                      client_weight_list['theta'].append(client_weights['theta'])
+                      client_weight_list['D'].append(client_weights['D'])
+                    else:
+                      client_weights = get_weight_obj(layers[0].eval(sess), layers[1].eval(sess), layers[2].eval(sess),None,0,global_model._T-1)
+                      #client_weight_list.append([client_weights['B'], client_weights['W'], client_weights['theta']]) 
+                      client_weight_list['B'].append(client_weights['B'])    
+                      client_weight_list['W'].append(client_weights['W'])
+                      client_weight_list['theta'].append(client_weights['theta'])
+                new_weights = {}
+                new_weights['B'] = tf.convert_to_tensor(np.mean(client_weight_list['B'],axis=0))
+                new_weights['W'] = tf.convert_to_tensor(np.mean(client_weight_list['W'],axis=0))
+                new_weights['theta'] = tf.convert_to_tensor(np.mean(client_weight_list['theta'],axis=0))
+                if layer == global_model._T-1:
+                  new_weights['D'] = tf.convert_to_tensor(np.mean(client_weight_list['D'],axis=0))
+                global_model.set_weights_at_layer(new_weights,layer, sess)
+        if do_3_stage_training:
+            # new_global_model = setup_model (config, Phi=Phi, D=D, name='new_global')
+            for layer in range(new_global_model._T):
+              if layer == new_global_model._T-1:
+                client_weight_list = get_weight_obj([], [], [],[],layer,new_global_model._T-1)
+              else:
+                client_weight_list = get_weight_obj([], [], [],None,0,new_global_model._T-1)
+                for client in range(num_clients):
+                    client_model = client_models_dict[client]
+                    client_layer = client_model.vars_in_layer[layer]
+                    if layer == new_global_model._T-1:
+                      client_weights = get_weight_obj(client_layer[0].eval(sess), client_layer[1].eval(sess), client_layer[2].eval(sess),client_layer[3].eval(sess),layer_in,global_model._T-1)
+                      client_weight_list['B'].append(client_weights['B'])    
+                      client_weight_list['W'].append(client_weights['W'])
+                      client_weight_list['theta'].append(client_weights['theta'])
+                      client_weight_list['D'].append(client_weights['D'])
+                      
+                    else:
+                      client_weights = get_weight_obj(client_layer[0].eval(sess), client_layer[1].eval(sess), client_layer[2].eval(sess),None,0,global_model._T-1)
+                      client_weight_list['B'].append(client_weights['B'])    
+                      client_weight_list['W'].append(client_weights['W'])
+                      client_weight_list['theta'].append(client_weights['theta'])
+                new_weights = {}
+                new_weights['B'] = tf.convert_to_tensor(np.mean(client_weight_list['B'],axis=0))
+                new_weights['W'] = tf.convert_to_tensor(np.mean(client_weight_list['W'],axis=0))
+                new_weights['theta'] = tf.convert_to_tensor(np.mean(client_weight_list['theta'],axis=0))
+                if layer == new_global_model._T-1:
+                  # print(client_weight_list['D'])
+                  new_weights['D'] = tf.convert_to_tensor(np.mean(client_weight_list['D'],axis=0))
+                new_global_model.set_weights_at_layer(new_weights,layer, sess)
+            
+            # lnmse2 = run_sc_test1(config,sess,new_global_model)
+            # np.savez('lnmse_new_global',lnmse2)
+            # print("New Global model performance")
+            # print(lnmse2)
 
-        # start timer
-        start = time.time ()
-
-        # train model
-        model.do_training (sess, stages, config.modelfn, config.scope,
-                           config.val_step, config.maxit, config.better_wait)
-
-        # end timer
-        end = time.time ()
-        elapsed = end - start
-        print ("elapsed time of training = " + str (timedelta (seconds=elapsed)))
-        PSNR = run_cs_test1(config,sess,model)
-        np.savez('PSNR'+str(model._M),PSNR)
+            PSNR = run_cs_test1(config,sess,new_global_model)
+            np.savez('PSNR'+str(new_global_model._M),PSNR)
 
     # end of run_cs_train
 
