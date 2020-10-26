@@ -1,10 +1,5 @@
 *.ipynb
 *.pyc
-*.npy
-*.npz
-*.mat
-*.png
-*.jpg
 *.eps
 *.sbatch
 *.output
@@ -16,9 +11,6 @@ algorithms/
 */__pycache__/
 .idea/
 logs/
-data/
-experiments/
 mat_weights/
-results/
 deprecated/
 
