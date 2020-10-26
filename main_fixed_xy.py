@@ -137,7 +137,7 @@ def setup_model(config, name, **kwargs) :
         from models.LISTA_cs import LISTA_cs
         model = LISTA_cs (kwargs['Phi'], kwargs['D'], T=config.T,
                           lam=config.lam, untied=config.untied,
-                          coord=config.coord, scope=config.scope, name=name)
+                          coord=config.coord, scope=config.scope)
 
     if config.net == 'LISTA_ss_cs' :
         """LISTA-SS-CS"""
@@ -305,6 +305,14 @@ def run_sc_train(config) :
         train.setup_input_sc (
             config.test, p, config.tbs, config.vbs, config.fixval,
             config.supp_prob, config.SNR, config.magdist, **config.distargs))
+    if os.path.exists(config.probfn+'_x_.npz'):
+        x_ = tf.convert_to_tensor(np.load(config.probfn+'_x_.npz')['arr_0'])
+    else:
+        np.savez(config.probfn+'_x_.npz', tf.Session().run(x_))
+    if os.path.exists(config.probfn+'_y_.npz'):
+        y_ = tf.convert_to_tensor(np.load(config.probfn+'_y_.npz')['arr_0'])
+    else:
+        np.savez(config.probfn+'_y_.npz', tf.Session().run(y_))
         
     """Set up model."""
     global_model = setup_model (config, A=p.A, name='global')
@@ -320,7 +328,6 @@ def run_sc_train(config) :
     client_models_dict = {}
     client_stages_dict = {}
     print(global_model.vars_in_layer)
-    
     for i in range(num_clients):
         client_models_dict[i] = setup_model(config,A=p.A, name='client%d'%(i))
         print(global_model.vars_in_layer == client_models_dict[i].vars_in_layer)
@@ -429,7 +436,7 @@ def run_cs_train (config) :
     D   = np.load (config.dict)
 
     """Set up model."""
-    model = setup_model (config, Phi=Phi, D=D, name="model")
+    model = setup_model (config, Phi=Phi, D=D)
 
     """Set up inputs."""
     y_, f_, y_val_, f_val_ = train.setup_input_cs(config.train_file,
@@ -460,8 +467,6 @@ def run_cs_train (config) :
         end = time.time ()
         elapsed = end - start
         print ("elapsed time of training = " + str (timedelta (seconds=elapsed)))
-        PSNR = run_cs_test1(config,sess,model)
-        np.savez('PSNR'+str(model._M),PSNR)
 
     # end of run_cs_train
 
@@ -991,96 +996,6 @@ def run_sc_test (config) :
     np.savez (config.resfn , **res)
     # end of test
     return lnmse
-
-def run_cs_test1 (config,sess,model) :
-    from utils.cs import imread_CS_py, img2col_py, col2im_CS_py
-    from skimage.io import imsave
-    """Load dictionary and sensing matrix."""
-    Phi = np.load (config.sensing) ['A']
-    D   = np.load (config.dict)
-    D = D["arr_0"]
-
-    # loading compressive sensing settings
-    M = Phi.shape [0]
-    F = Phi.shape [1]
-    N = D.shape [1]
-    assert M == config.M and F == config.F and N == config.N
-    patch_size = int (np.sqrt (F))
-    assert patch_size ** 2 == F
-
-
-    """Set up model."""
-    # model = setup_model (config, Phi=Phi, D=D)
-
-    """Inference."""
-    y_ = tf.placeholder (shape=(M, None), dtype=tf.float32)
-    _, fhs_ = model.inference (y_, None)
-
-
-    """Start testing."""
-    # tfconfig = tf.ConfigProto (allow_soft_placement=True)
-    # tfconfig.gpu_options.allow_growth = True
-    # with tf.Session (config=tfconfig) as sess:
-
-    #     # graph initialization
-    #     sess.run (tf.global_variables_initializer ())
-    #     # load model
-    #     model.load_trainable_variables (sess , config.modelfn)
-
-    # calculate average NMSE and PSRN on test images
-    test_dir = './data/test_images/'
-    test_files = os.listdir (test_dir)
-    avg_nmse = 0.0
-    avg_psnr = 0.0
-    overlap = 0
-    stride = patch_size - overlap
-    out_dir = "./data/recon_images"
-    if 'joint' in config.net :
-        D = sess.run (model.D_)
-    for test_fn in test_files :
-        # read in image
-        out_fn = test_fn[:-4] + "_recon_{}.png".format(config.sample_rate)
-        out_fn = os.path.join(out_dir, out_fn)
-        test_fn = os.path.join (test_dir, test_fn)
-        test_im, H, W, test_im_pad, H_pad, W_pad = \
-                imread_CS_py (test_fn, patch_size, stride)
-        test_fs = img2col_py (test_im_pad, patch_size, stride)
-
-        # remove dc from features
-        test_dc = np.mean (test_fs, axis=0, keepdims=True)
-        test_cfs = test_fs - test_dc
-        test_cfs = np.asarray (test_cfs) / 255.0
-
-        # sensing signals
-        test_ys = np.matmul (Phi, test_cfs)
-        test_ys = test_ys.astype(np.float32)
-        num_patch = test_ys.shape [1]
-
-        rec_cfs = sess.run (fhs_ [-1], feed_dict={y_: test_ys}) 
-        rec_fs  = rec_cfs * 255.0 + test_dc
-
-        # patch-level NMSE
-        patch_err = np.sum (np.square (rec_fs - test_fs))
-        patch_denom = np.sum (np.square (test_fs))
-        avg_nmse += 10.0 * np.log10 (patch_err / patch_denom)
-
-        rec_im = col2im_CS_py (rec_fs, patch_size, stride,
-                                H, W, H_pad, W_pad)
-
-        import cv2
-        cv2.imwrite('%s'%out_fn, np.clip(rec_im, 0.0, 255.0))
-
-        # image-level PSNR
-        image_mse = np.mean (np.square (np.clip(rec_im, 0.0, 255.0) - test_im))
-        avg_psnr += 10.0 * np.log10 (255.**2 / image_mse)
-
-    num_test_ims = len (test_files)
-    print ('Average Patch-level NMSE is {}'.format (avg_nmse / num_test_ims))
-    print ('Average Image-level PSNR is {}'.format (avg_psnr / num_test_ims))
-
-    return avg_psnr / num_test_ims
-    # end of cs_testing
-
 
 def run_cs_test (config) :
     from utils.cs import imread_CS_py, img2col_py, col2im_CS_py
