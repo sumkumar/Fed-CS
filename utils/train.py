@@ -241,7 +241,7 @@ def setup_sc_training (model, y_, x_, y_val_, x_val_, x0_,
 
 
 def setup_cs_training (model, y_, f_, y_val_, f_val_, x0_,
-                       init_lr, decay_rate, lr_decay, lasso_lam):
+                       init_lr, decay_rate, lr_decay, lasso_lam,client,do_3layer_stages):
     """TODO: Docstring for setup_training.
 
     :y_: Tensorflow placeholder or tensor.
@@ -299,29 +299,23 @@ def setup_cs_training (model, y_, f_, y_val_, f_val_, x0_,
                                if var not in train_vars])
 
         # First only train the variables in the `var_list` in current layer.
-        op_ = tf.train.AdamOptimizer (init_lr).minimize (loss_,
+        op_ = tf.train.AdamOptimizer (init_lr,name='optimizer'+str(client)).minimize (loss_,
                                                          var_list=var_list)
         training_stages.append ((layer_info, loss_, nmse_,
                                  loss_val_, nmse_val_, op_, var_list))
 
-        for var in var_list:
-            train_vars.append (var)
-
-        # Train all variables in current and former layers with decayed
-        # learning rate.
         for lr in lrs:
-            op_ = get_train_op (loss_, train_vars, lr, lr_multiplier)
-            training_stages.append (dict (name=layer_info + ' lr={}'.format (lr),
-                                          loss=loss_,
-                                          nmse=nmse_,
-                                          loss_val=loss_val_,
-                                          nmse_val=nmse_val_,
-                                          op=op_,
-                                          var_list=tuple (train_vars)))
-
-        # decay learning rates for trained variables
-        for var in train_vars:
+                op_ = get_train_op (loss_, train_vars, lr, lr_multiplier,client)
+                training_stages.append ((layer_info + ' lr={}'.format (lr),
+                                         loss_,
+                                         nmse_,
+                                         loss_val_,
+                                         nmse_val_,
+                                         op_,
+                                         tuple (train_vars), ))
+        for var in var_list:
             lr_multiplier [var.op.name] *= decay_rate
+                                                               
 
     return training_stages
 
