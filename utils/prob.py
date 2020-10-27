@@ -1,12 +1,4 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
-
 """
-file  : prob.py
-author: Xiaohan Chen
-email : chernxh@tamu.edu
-date  : 2019-02-23
-
 Define problem class that is used experiments.
 """
 

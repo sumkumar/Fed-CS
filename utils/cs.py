@@ -1,12 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 """
-file  : cs.py
-author: Xiaohan Chen
-email : chernxh@tamu.edu
-date  : 2019-02-18
-
 Utility functions for natural images compressive sensing.
 """
 

@@ -1,12 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 """
-file  : LISTA_base.py
-author: xhchrn
-email : chernxh@tamu.edu
-date  : 2019-02-18
-
 A base class for all LISTA networks.
 """
 
@@ -55,7 +47,7 @@ class LISTA_base (object):
         """
         self.state = utils.train.load_trainable_variables(sess, savefn)
 
-    def do_training(self, sess, stages,savefn, scope,
+    def do_training(self, sess, stages, savefn, scope,
                     val_step, maxit, better_wait):
         """
         Do training actually. Refer to utils/train.py.
@@ -72,9 +64,10 @@ class LISTA_base (object):
 
         """
         self.state = utils.train.do_training(
-                sess, stages,savefn, scope, val_step, maxit, better_wait)
+                sess, stages, savefn, scope, val_step, maxit, better_wait)
+
 
     def do_training_one_stage(self, sess, stage,savefn, scope,
                     val_step, maxit, better_wait):
-        utils.train.do_training_one_stage(sess, stage,savefn, scope, val_step, maxit, better_wait)
 
+        self.state = utils.train.do_training_one_stage(sess, stage,savefn, scope, val_step, maxit, better_wait)

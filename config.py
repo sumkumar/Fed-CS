@@ -1,11 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 """
-config.py
-author: xhchrn
-        chernxh@tamu.edu
-
 Set up experiment configuration using argparse library.
 """
 
@@ -29,35 +22,17 @@ net_arg.add_argument(
     '-T', '--T', type=int, default=16,
     help="Number of layers of LISTA.")
 net_arg.add_argument(
-    '-eT', '--eT', type=int, default=4,
-    help="Number of layers of encoders.")
-net_arg.add_argument(
-    '-dT', '--dT', type=int, default=16,
-    help="Number of layers of decoders.")
-net_arg.add_argument(
-    '-p', '--percent', type=float, default=0.8,
-    help="Percent of entries to be selected as support in each layer.")
-net_arg.add_argument(
-    '-maxp', '--max_percent', type=float, default=0.0,
-    help="Maximum percentage of entries to be selectedas support in each layer.")
-net_arg.add_argument(
     '-l', '--lam', type=float, default=0.4,
     help="Initial lambda in LISTA solvers.")
 net_arg.add_argument(
     '-u', '--untied', action='store_false',
     help="Whether weights are untied between layers.")
 net_arg.add_argument(
-    '-c', '--coord', action='store_true',
+    '-c', '--coord', action='store_false',
     help="Whether use independent vector thresholds.")
 net_arg.add_argument(
     '-W', '--W', type=str, default="",
     help="Pretrained weights for fbss models.")
-net_arg.add_argument(
-    "-eta", "--eta", type=float, default=1e-3,
-    help="The initial step size in the projected gradient descent for encoding weight matrices.")
-net_arg.add_argument(
-    "-Q", "--Q", type=str, default=None,
-    help="The matrix that is used to reweight the loss function in encoder training.")
 net_arg.add_argument(
     '-sc', '--scope', type=str, default="",
     help="Scope name of the model.")
@@ -90,23 +65,10 @@ prob_arg.add_argument(
     help="Flag of whether normalize the columns of the dictionary or sensing matrix.")
 prob_arg.add_argument(
     '-task', '--task_type', type=str, default='sc',
-    help='Task type, in [`sc`, `cs`, `denoise`].')
+    help='Task type, in [`sc`, `cs`].')
 prob_arg.add_argument(
     '-llam', '--lasso_lam', type=float, default=0.2,
     help='The weight of l1 norm term `labmda` in LASSO.')
-# Conv problem arguments
-prob_arg.add_argument(
-    '-cd', '--conv_d', type=int, default=3,
-    help="The size of kernels in a convolutional dictionary.")
-prob_arg.add_argument(
-    '-cm', '--conv_m', type=int, default=100,
-    help="The number of kernels in a convolutional dictionary.")
-prob_arg.add_argument(
-    '-clam', '--conv_lam', type=float, default=0.05,
-    help="The weight in the objective function used to learn the convolutional dictioanry.")
-prob_arg.add_argument(
-    '-ca', '--conv_alpha', type=float, default=0.1,
-    help="The initial step size for convolutional ISTA.")
 
 """Training arguments."""
 train_arg = parser.add_argument_group('train')
@@ -117,10 +79,10 @@ train_arg.add_argument(
     '-lr', '--init_lr', type=float, default=5e-4,
     help="Initial learning rate.")
 train_arg.add_argument(
-    '-tbs', '--tbs', type=int, default=70,
+    '-tbs', '--tbs', type=int, default=64,
     help="Training batch size.")
 train_arg.add_argument(
-    '-vbs', '--vbs', type=int, default=100,
+    '-vbs', '--vbs', type=int, default=1000,
     help="Validation batch size.")
 train_arg.add_argument(
     '-fixval', '--fixval', type=str2bool, default=True,
@@ -150,19 +112,6 @@ train_arg.add_argument(
     help="The value that the magnitudes take with probability `1-magbp` when"
          "they are sampled from Bernoulli.")
 train_arg.add_argument(
-    '-sigma', '--sigma', type=float, default=20.0,
-    help="The standard deviation of image noises for denoise task.")
-train_arg.add_argument(
-    "-hc", "--height_crop", type=int, default=321,
-    help="The height after cropping for BSD500 denoising experiments.")
-train_arg.add_argument(
-    "-wc", "--width_crop", type=int, default=321,
-    help="The width after cropping for BSD500 denoising experiments.")
-train_arg.add_argument(
-    "-epoch", "--num_epochs", type=int, default=20,
-    help="The number of training epochs for denoise experiments.\n"
-         "`-1` means infinite number of epochs.")
-train_arg.add_argument(
     '-dr', '--decay_rate', type=float, default=0.3,
     help="Learning rate decaying rate after training each layer.")
 train_arg.add_argument(
@@ -172,7 +121,7 @@ train_arg.add_argument(
     '-vs', '--val_step', type=int, default=10,
     help="Interval of validation in training.")
 train_arg.add_argument(
-    '-mi', '--maxit', type=int, default=100,
+    '-mi', '--maxit', type=int, default=20,
     help="Max number iteration of each stage.")
 train_arg.add_argument(
     '-bw', '--better_wait', type=int, default=4000,
@@ -206,10 +155,10 @@ exp_arg.add_argument(
     '-df', '--data_folder', type=str, default=None,
     help="Folder where the tfrecords datasets are stored.")
 exp_arg.add_argument(
-    '-tf', '--train_file', type=str, default='train.tfrecords',
+    '-tf', '--train_file', type=str, default='./results/train.tfrecords',
     help="File name of tfrecords file of training data for cs exps.")
 exp_arg.add_argument(
-    '-vf', '--val_file', type=str, default='val.tfrecords',
+    '-vf', '--val_file', type=str, default='./results/val.tfrecords',
     help="File name of tfrecords file of validation data for cs exps.")
 exp_arg.add_argument(
     '-col', '--column', type=str2bool, default=False,
@@ -230,61 +179,6 @@ exp_arg.add_argument(
 exp_arg.add_argument(
     '-g', '--gpu', type=str, default='0',
     help="ID's of allocated GPUs.")
-################################################
-####### Arguments for robust experiments #######
-################################################
-parser.add_argument(
-    "-ps_max", "--psigma_max", type=float, default=2e-2,
-    help="Maximum standard deviation for perturbations in dictionaries.")
-parser.add_argument(
-    "-psteps", "--psteps", type=int, default=5,
-    help="The number of steps for curriculum learning that gradually increases"
-         "the level of perturbations.")
-parser.add_argument(
-    "-ms", "--msigma", type=float, default=0.0,
-    help="Standard deviation for measurement noisy in robustness experiments.")
-parser.add_argument(
-    "-eps", "--encoder_psigma", type=float, default=1e-2,
-    help="The standard deviation for perturbations in dictionaries for encoder pre-training.")
-parser.add_argument(
-    "-elr", "--encoder_lr", type=float, default=1e-6,
-    help="The initial learning rate for encoders.")
-parser.add_argument(
-    "-eplr", "--encoder_pre_lr", type=float, default=1e-4,
-    help="The initial learning rate for pre-training encoders.")
-parser.add_argument(
-    "-dlr", "--decoder_lr", type=float, default=1e-4,
-    help="The initial learning rate for decoders.")
-# parser.add_argument(
-#     "-dlr", "--decoder_pre_lr", type=float, default=1e-4,
-#     help="The initial learning rate for pre-training decoders.")
-parser.add_argument(
-    "-eb", "--encoder_Binit", type=str, default="default",
-    help="The initial weight matrices in the encoders.")
-parser.add_argument(
-    "-el", "--encoder_loss", type=str, default="rel2",
-    help="The loss type of encoder pretraining.")
-parser.add_argument(
-    "-escope", "--encoder_scope", type=str, default="",
-    help="The scope name for encoders.")
-parser.add_argument(
-    "-dscope", "--decoder_scope", type=str, default="",
-    help="The scope name for decoders.")
-parser.add_argument(
-    "-eid", "--encoder_id", type=int, default=0,
-    help="The model id for encoders.")
-parser.add_argument(
-    "-did", "--decoder_id", type=int, default=0,
-    help="The model id for decoders.")
-parser.add_argument(
-    "-Abs", "--Abs", type=int, default=4,
-    help="The number of perturbed dictionaries sampled in each robustness training step.")
-parser.add_argument(
-    "-xbs", "--xbs", type=int, default=16,
-    help="The number of sparse vectors sampled in each robustness training step.")
-# parser.add_argument(
-#     "-maxit", "--maxit", type=int, default=50000,
-#     help="Max iterations in each stage in robustness experiments.")
 
 
 def get_config():
@@ -304,16 +198,13 @@ def get_config():
 
     """Experiments and results base folder."""
     if config.prob_folder == "":
-        if config.task_type in ['sc', "encoder", 'robust']:
+        if config.task_type in ['sc']:
             config.prob_folder = ('m{}_n{}_k{}_p{}_s{}'.format(
                 config.M, config.N, config.con_num, config.pnz, config.SNR))
         elif config.task_type == 'cs':
             # check problem folder: dictionary and sensing matrix
             config.prob_folder = ('cs_bsd_d{}-{}'.format(config.F, config.N))
-        elif config.task_type == "denoise":
-            config.prob_folder = ("denoise_bsd500_d{d}_m{m}_lam{lam}".format(
-                d=config.conv_d, m=config.conv_m, lam=config.conv_lam))
-
+    
     # make experiment base path and results base path
     setattr(config, 'expbase', os.path.join(config.exp_folder,
                                             config.prob_folder))
@@ -358,32 +249,9 @@ def get_config():
             raise ValueError('No sensing matrix file found')
         if not os.path.exists(config.dict) :
             raise ValueError('No dictionary matrix file found')
-    # Data folder for denoise experiments.
-    elif config.task_type == 'denoise':
-        setattr(config, 'probfn' , os.path.join(config.expbase, config.prob))
-        if config.data_folder is None:
-            raise ValueError("Please provide a dataset directory tfrecords file for denoise exp!")
-        if config.train_file is None:
-            raise ValueError("Please provide a training tfrecords file for denoise exp!")
-        if config.val_file is None:
-            raise ValueError("Please provide a validation tfrecords file for denoise exp!")
-        if not os.path.exists(os.path.join(config.data_folder, config.train_file)) :
-            raise ValueError('No training data tfrecords file found.')
-        if not os.path.exists(os.path.join(config.data_folder, config.val_file)) :
-            raise ValueError('No validation data tfrecords file found')
-    elif config.task_type == 'robust':
-        setattr(config, 'probfn' , os.path.join(config.expbase, config.prob))
-    elif config.task_type == 'encoder':
-        setattr(config, 'probfn' , os.path.join(config.expbase, config.prob))
-
 
     # lr_decay
     config.lr_decay = tuple([float(decay) for decay in config.lr_decay.split(',')])
-
-    """Noise standard deviation for denoise experiments:
-    sigma -> standard deviation."""
-    if config.task_type == 'denoise':
-        config.denoise_std = config.sigma / 255.0
 
     """Support and magnitudes distribution settings for sparse coding task."""
     if config.task_type == 'sc':
