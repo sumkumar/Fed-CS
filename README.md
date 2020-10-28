@@ -1,11 +1,20 @@
-Section 2:
+This repository is for "Fed-CS" network proposed in the following paper:
+Komal Krishna Mogilipalepu, Sumanth Kumar Modukuri, Amarlingam Madapu, Sundeep Prabhakar Chepuri, "Federated Deep Unfolding for Sparse Recovery", submitted to ICASSP2021, the pdf can be found at https://arxiv.org/abs/2010.12616.
+The code is tested in Linux environment (Python: 3.5.2, Tensorflow: 1.12.0, CUDA9.0) with Nvidia GTX 1080Ti GPU.
+
+
+Introduction: In this work we propose a federated learning technique for deep algorithm unfolding with applications to sparse signal recovery and compressed sensing. We refer to this architecture as Fed-CS. Specifically, we unfold and learn the iterative shrinkage thresholding algorithm for sparse signal recovery without transporting to a central location, the training data distributed across many clients. We propose a layer-wise federated learning technique, in which each client uses local data to train a common model. Then we transmit only the model parameters of that layer from all the clients to the server, which aggregates these local models to arrive at a consensus model. The proposed layer-wise federated learning for sparse recovery is communication efficient and preserves data privacy. Through numerical experiments on synthetic and real datasets, we demonstrate Fed-CS's efficacy and present various trade-offs in terms of the number of participating clients and communications involved compared to a centralized approach of deep unfolding. 
+
+
+
+Problem file generation: It contains, measurement matrix A with the specified dimention.
     
-        Generate Problem files for synthetic data:
+        For synthetic data:
             
             !python utils/prob.py --M 250 --N 500 \
                     --pnz 0.1 --SNR inf --con_num 0.0 --column_normalized True
             
-        Generate Problem files for real data:
+        For real data: It generates the measurement matrix $\Psi$
         
             !python utils/prob.py --M 128 --N 256 \
 	                --pnz 0.1 --SNR inf --con_num 0.0 --column_normalized True
@@ -19,11 +28,9 @@ Section 2:
             --con_num: the condition number. 0.0 (default) means the condition number will not be changed.
             --column_normalized: whether normalize the columns of the measurement matrix to unit l-2 norm.
 
-        The generated will be saved to the experiments/m250_n500_k0.0_p0.1_s40/prob.npz. If you want to generate a problem from an existing 
-        measurement matrix, which should be saved in Numpy npy file format, use --load_A option with the path to the matrix file. In this case, 
-        options --M and --N will be overwriiten by the shape of loaded matrix.
+        The rusultant file is saved at the path experiments/m250_n500_k0.0_p0.1_s40/prob.npz, where the prob.npz is the problem file. If you want to generate a      	     problem file from an existing measurement matrix, which is a numpy array, use --load_A option. In this case, options --M and --N will be overwriiten by the 	 shape of loaded matrix.
                     
-Section 3:
+Model training and testing for synthetic data:
 
         Training on synthetic data:
         
@@ -51,9 +58,9 @@ Section 3:
             --num_cl: Number of clients or users in the federation setting.
             --maxit: Number of local iterations at every client.
             
-Section 4:
+Model training and testing for realdata:
 
-        1. Download BSD500 dataset. Split into train, validation and test sets as you wish.
+        1. Download BSD500 dataset. Split into train, validation and test sets, sizes are optional.
         2. Generate the tfrecords using:
             
             !python3 utils/data.py --task_type cs \
