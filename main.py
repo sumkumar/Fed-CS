@@ -79,22 +79,6 @@ def get_weights(model, sess):
     weights['theta'] = theta_layers
     return weights
 
-def get_weights_cs(model, sess):
-    layers = model.vars_in_layer
-    B_layers = [layers[i][0].eval(session=sess) for i in range(len(layers)-1)]
-    W_layers = [layers[i][1].eval(session=sess) for i in range(len(layers)-1)]
-    theta_layers = [layers[i][2].eval(session=sess) for i in range(len(layers)-1)]
-    B_layers.append(layers[len(layers)-1][0].eval(session=sess))
-    W_layers.append(layers[len(layers)-1][1].eval(session=sess))
-    theta_layers.append(layers[len(layers)-1][2].eval(session=sess))
-    D = [layers[len(layers)-1][3].eval(session=sess)]
-    weights = {}
-    weights['B'] = B_layers
-    weights['W'] = W_layers
-    weights['theta'] = theta_layers
-    weights['D'] = D
-    return weights
-
 def get_weight_obj(B_layers, W_layers, theta_layers):
     weights = {}
     weights['B'] = B_layers
@@ -189,7 +173,7 @@ def run_sc_train(config) :
                     new_weights['W'] = tf.convert_to_tensor(np.mean(client_weight_list['W'],axis=0))
                     new_weights['theta'] = tf.convert_to_tensor(np.mean(client_weight_list['theta'],axis=0))
                     new_Layer_model.set_weights_at_layer(new_weights,layer_in, sess)
-                lnmse2 = run_sc_test1(config,sess,new_Layer_model)
+                lnmse2 = run_sc_test_with_created_session(config,sess,new_Layer_model)
                 Layer_wise_lnmse.append(lnmse2[layer+1])
         np.savez('Layer_lnmse_'+str(num_clients)+"_"+str(config.maxit),Layer_wise_lnmse)
         print("Layer wise performance")
@@ -209,7 +193,7 @@ def run_sc_train(config) :
                 new_weights['W'] = tf.convert_to_tensor(np.mean(client_weight_list['W'],axis=0))
                 new_weights['theta'] = tf.convert_to_tensor(np.mean(client_weight_list['theta'],axis=0))
                 new_global_model.set_weights_at_layer(new_weights,layer, sess)
-            lnmse2 = run_sc_test1(config,sess,new_global_model)
+            lnmse2 = run_sc_test_with_created_session(config,sess,new_global_model)
             np.savez('lnmse_new_global'+str(num_clients)+"_"+str(config.maxit),lnmse2)
             print("New Global model performance")
             print(lnmse2)
@@ -323,7 +307,7 @@ def run_cs_train (config) :
                   new_weights['D'] = tf.convert_to_tensor(np.mean(client_weight_list['D'],axis=0))
                 new_global_model.set_weights_at_layer(new_weights,layer, sess)
             
-            PSNR = run_cs_test1(config,sess,new_global_model)
+            PSNR = run_cs_test_with_created_session(config,sess,new_global_model)
             np.savez('PSNR'+str(new_global_model._M),PSNR)
             save_trainable_variables(sess ,config.modelfn,config.scope)
     # end of run_cs_train
@@ -339,7 +323,7 @@ def run_test (config):
     elif config.task_type == "cs":
         run_cs_test (config)
         
-def run_sc_test1(config,sess,model) :
+def run_sc_test_with_created_session(config,sess,model) :
     """
     Test model.
     """
@@ -436,7 +420,7 @@ def run_sc_test(config) :
     np.savez (config.resfn , **res)
     # end of test
 
-def run_cs_test1 (config,sess,model) :
+def run_cs_test_with_created_session(config,sess,model) :
     from utils.cs import imread_CS_py, img2col_py, col2im_CS_py
     from skimage.io import imsave
     """Load dictionary and sensing matrix."""
