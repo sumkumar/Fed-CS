@@ -3,7 +3,7 @@ This repository is for "Fed-CS" network proposed in the following paper:
 Komal Krishna Mogilipalepu, Sumanth Kumar Modukuri, Amarlingam Madapu, Sundeep Prabhakar Chepuri, "Federated Deep Unfolding for Sparse Recovery", submitted to ICASSP2021, the pdf can be found at https://arxiv.org/abs/2010.12616.
 The code is tested in Linux environment (Python: 3, Tensorflow: 1.15) with Nvidia GTX 2080Ti GPU.
 
-Devolopment of this repository is based on https://github.com/VITA-Group/ALISTA
+Development of this repository is based on https://github.com/VITA-Group/ALISTA
 
 * [Introduction](#introduction)
 * [Run the codes](#run-the-codes)
