@@ -155,22 +155,14 @@ class LISTA_cs (LISTA_base):
     
     def set_weights_at_layer(self, weights, layer, sess):
       with tf.variable_scope (self._scope, reuse=tf.AUTO_REUSE) as vs:
-
+        assign_op = self.vars_in_layer[layer][0].assign(weights['B'])
+        sess.run(assign_op)
+        assign_op = self.vars_in_layer[layer][1].assign(weights['W'])
+        sess.run(assign_op)
+        assign_op = self.vars_in_layer[layer][2].assign(weights['theta'])
+        sess.run(assign_op)
         if layer == self._T-1:
-          assign_op = self.vars_in_layer[layer][0].assign(weights['B'])
-          sess.run(assign_op)
-          assign_op = self.vars_in_layer[layer][1].assign(weights['W'])
-          sess.run(assign_op)
-          assign_op = self.vars_in_layer[layer][2].assign(weights['theta'])
-          sess.run(assign_op)
           assign_op = self.vars_in_layer[layer][3].assign(weights['D'])
-          sess.run(assign_op)
-        else:
-          assign_op = self.vars_in_layer[layer][0].assign(weights['B'])
-          sess.run(assign_op)
-          assign_op = self.vars_in_layer[layer][1].assign(weights['W'])
-          sess.run(assign_op)
-          assign_op = self.vars_in_layer[layer][2].assign(weights['theta'])
           sess.run(assign_op)
 
       return self
