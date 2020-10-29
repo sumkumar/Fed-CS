@@ -30,7 +30,7 @@ python utils/prob.py --M 250 --N 500 \
 ```
 #### Real Data
 
-It generates the measurement matrix $\Psi$
+It generates the measurement matrix $\Phi$
 ```
 python utils/prob.py --M 128 --N 256 \
 	--pnz 0.1 --SNR inf --con_num 0.0 --column_normalized True
@@ -38,7 +38,7 @@ python utils/prob.py --M 128 --N 256 \
 Explanation for the options:
 
 * `--M`: the dimension of measurements.
-* `--N`: the dimension of sparse signals.
+* `--N`: the dimension of sparse signals for synthetic data.
 * `--pnz`: the approximate of non-zero elements in sparse signals.
 * `--SNR`: the signal-to-noise ratio in dB unit in the measurements. inf means noiseless setting.
 * `--con_num`: the condition number. 0.0 (default) means the condition number will not be changed.
