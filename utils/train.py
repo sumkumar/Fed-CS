@@ -271,25 +271,6 @@ def setup_cs_training (model, y_, f_, y_val_, f_val_, x0_,
             for var in train_vars:
                 lr_multiplier [var.op.name] *= decay_rate
 
-        # for var in var_list:
-        #     train_vars.append (var)
-
-        # # Train all variables in current and former layers with decayed
-        # # learning rate.
-        # for lr in lrs:
-        #     op_ = get_train_op (loss_, train_vars, lr, lr_multiplier)
-        #     training_stages.append (dict (name=layer_info + ' lr={}'.format (lr),
-        #                                   loss=loss_,
-        #                                   nmse=nmse_,
-        #                                   loss_val=loss_val_,
-        #                                   nmse_val=nmse_val_,
-        #                                   op=op_,
-        #                                   var_list=tuple (train_vars)))
-
-        # # decay learning rates for trained variables
-        # for var in train_vars:
-        #     lr_multiplier [var.op.name] *= decay_rate
-
     return training_stages
 
 
@@ -316,62 +297,6 @@ def get_train_op (loss_, var_list, lr, lr_multiplier,client):
         grads_vars_multiplied.append ((grad, var))
     return opt.apply_gradients (grads_vars_multiplied)
 
-
-# def do_training (sess, stages,savefn, scope, val_step, maxit, better_wait):
-#     """
-#     Train the model actually.
-
-#     :sess: Tensorflow session. Variables should be initialized or loaded from trained
-#            model in this session.
-#     :stages: Training stages info. ( name, xh_, loss_, nmse_, op_, var_list ).
-#     :prob: Problem instance.
-#     :batch_size: Batch size.
-#     :val_step: How many steps between two validation.
-#     :maxit: Max number of iterations in each training stage.
-#     :better_wait: Jump to next training stage in advance if nmse_ no better after
-#                   certain number of steps.
-#     """
-   
-#     for name, loss_, nmse_, loss_val_, nmse_val_, op_, var_list in stages:
-       
-#         var_disc = 'fine tuning ' + ','.join([v.name for v in var_list])
-#         print (name + ' ' + var_disc)
-
-#         nmse_hist_val = []
-#         for i in range (maxit+1):
-
-#             _, loss_tr, nmse_tr = sess.run ([op_, loss_, nmse_])
-#             db_tr = 10. * np.log10(nmse_tr)
-
-#             if i % val_step == 0:
-#                 nmse_val, loss_val = sess.run ([nmse_val_, loss_val_])
-
-#                 if np.isnan (nmse_val):
-#                     raise RuntimeError ('nmse is nan. exiting...')
-
-#                 nmse_hist_val = np.append (nmse_hist_val, nmse_val)
-#                 db_best_val = 10. * np.log10 (nmse_hist_val.min())
-#                 db_val = 10. * np.log10 (nmse_val)
-#                 sys.stdout.write(
-#                         "\r| i={i:<7d} | loss_tr={loss_tr:.6f} | "
-#                         "db_tr={db_tr:.6f}dB | loss_val ={loss_val:.6f} | "
-#                         "db_val={db_val:.6f}dB | (best={db_best_val:.6f})"\
-#                             .format(i=i, loss_tr=loss_tr, db_tr=db_tr,
-#                                     loss_val=loss_val, db_val=db_val,
-#                                     db_best_val=db_best_val))
-#                 sys.stdout.flush()
-#                 if i % (10 * val_step) == 0:
-#                     age_of_best = (len(nmse_hist_val) -
-#                                    nmse_hist_val.argmin() - 1)
-#                     # If nmse has not improved for a long time, jump to the
-#                     # next training stage.
-#                     if age_of_best * val_step > better_wait:
-#                         print('')
-#                         break
-#                 if i % (100 * val_step) == 0:
-#                     print('')
-
-#         save_trainable_variables(sess ,savefn, scope)
 
 def do_training_one_stage(sess, stage,savefn, scope, val_step, maxit, better_wait):
     
