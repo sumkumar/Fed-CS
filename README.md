@@ -72,7 +72,7 @@ Explanation for the options (all optinos are parsed in config.py):
 * `-T`: the number of layers.
 * `--scope`: the name of variable scope of model variables in TensorFlow.
 * `--exp_id`: experiment id, used to differentiate experiments with the same setting.  
-* `--num_cl`: Number of clients or users in the federation setting.
+* `--num_cl`: Number of clients or users participating in the federated setting.
 * `--maxit`: Number of local iterations at every client.
             
 #### Run on Real Data
